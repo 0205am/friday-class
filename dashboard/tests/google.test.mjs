@@ -29,7 +29,7 @@ const cookie = (res) =>
     .concat(res.headers["set-cookie"] ?? [])
     .map((c) => c.split(";")[0])
     .join("; ");
-function fixture(email = "owner@example.com", verified = true) {
+function fixture(email = "owner@example.com", verified = true, options = {}) {
   let params,
     calls = 0;
   const client = {
@@ -38,12 +38,15 @@ function fixture(email = "owner@example.com", verified = true) {
       return `https://accounts.google.com/o/oauth2/v2/auth?state=${p.state}`;
     },
     async getToken() {
+      if (options.tokenError)
+        throw Error("private-token-error-do-not-disclose");
       return {
         tokens: {
           access_token: "access-secret",
           id_token: "id-token",
           expiry_date: Date.now() + 3600000,
           scope:
+            options.scope ??
             "openid email https://www.googleapis.com/auth/calendar.events.readonly",
         },
       };
@@ -53,7 +56,7 @@ function fixture(email = "owner@example.com", verified = true) {
         getPayload: () => ({
           email,
           email_verified: verified,
-          nonce: params.nonce,
+          nonce: options.nonce ?? params.nonce,
         }),
       };
     },
@@ -99,6 +102,28 @@ async function login(f) {
   );
   return { start, done };
 }
+test("callback failures distinguish account, scope, nonce and token exchange without secret details", async () => {
+  for (const [f, reason] of [
+    [fixture("other@example.com"), "account"],
+    [fixture("owner@example.com", true, { scope: "openid email" }), "scope"],
+    [fixture("owner@example.com", true, { nonce: "wrong" }), "identity"],
+    [fixture("owner@example.com", true, { tokenError: true }), "token"],
+  ]) {
+    const { done } = await login(f);
+    assert.equal(
+      new URL(done.headers.location).searchParams.get("reason"),
+      reason,
+    );
+    assert.ok(!done.headers.location.includes("private-token"));
+    assert.ok(!done.headers.location.includes("access-secret"));
+  }
+  const f = fixture();
+  const expired = await call(f.handler, "/api/google/callback?code=x&state=x");
+  assert.equal(
+    new URL(expired.headers.location).searchParams.get("reason"),
+    "state",
+  );
+});
 test("unconfigured server exposes no secrets and blocks login", async () => {
   const h = createGoogleHandler({ env: {} });
   assert.deepEqual(JSON.parse((await call(h, "/api/google/status")).body), {

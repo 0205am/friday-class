@@ -114,12 +114,37 @@ export async function setupGoogle(ctx, schedule) {
   const url = new URL(location.href);
   const auth = url.searchParams.get("auth");
   if (auth) {
+    const messages = {
+      account:
+        "연결할 계정이 허용 계정과 다릅니다. Vercel GOOGLE_ALLOWED_EMAIL과 지금 선택한 Gmail을 확인해 주세요. [account]",
+      scope:
+        "캘린더 읽기 권한이 승인되지 않았습니다. 다시 연결할 때 캘린더 접근 권한을 선택해 주세요. [scope]",
+      state:
+        "로그인 확인 정보가 없거나 만료됐습니다. 같은 Chrome 탭에서 대시보드를 열고 다시 연결해 주세요. [state]",
+      consent:
+        "Google 접근 동의가 완료되지 않았습니다. 다시 연결해 주세요. [consent]",
+      credentials:
+        "Google 클라이언트 인증에 실패했습니다. Vercel의 클라이언트 ID와 보안 비밀번호가 같은 웹 클라이언트의 값인지 확인해 주세요. [credentials]",
+      code: "로그인 코드가 유효하지 않습니다. 이전 로그인 화면을 닫고 다시 연결해 주세요. 반복되면 클라이언트 설정 확인이 필요합니다. [code]",
+      token:
+        "Google 인증 응답을 처리하지 못했습니다. 다시 시도하고 반복되면 클라이언트 설정을 확인해 주세요. [token]",
+      identity:
+        "Google 계정 인증을 검증하지 못했습니다. 다시 시도해 주세요. [identity]",
+      expired: "Google 인증이 만료됐습니다. 다시 연결해 주세요. [expired]",
+      session:
+        "로그인 상태를 저장하지 못했습니다. 다시 시도해 주세요. [session]",
+    };
+    const failure =
+      messages[url.searchParams.get("reason")] ??
+      "Google 연결을 완료하지 못했습니다. 허용 계정과 권한 설정을 확인해 주세요.";
+    if (auth !== "connected") status.textContent = failure;
     announce(
       auth === "connected"
         ? "Google 계정이 연결됐습니다. 기본 캘린더 보기를 눌러 주세요."
-        : "Google 연결을 완료하지 못했습니다. 허용 계정과 권한 설정을 확인해 주세요.",
+        : failure,
     );
     url.searchParams.delete("auth");
+    url.searchParams.delete("reason");
     history.replaceState(null, "", url.pathname + url.search + url.hash);
   }
 }

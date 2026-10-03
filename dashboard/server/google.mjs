@@ -183,6 +183,8 @@ export function createGoogleHandler({
       );
     }
     if (action === "callback") {
+      const fail = (reason) =>
+        redirect(cfg.origin + "/?auth=failed&reason=" + reason);
       res.setHeader("Set-Cookie", [
         setCookie(FLOW, "", 0, cfg),
         setCookie(SESSION, "", 0, cfg),
@@ -194,7 +196,8 @@ export function createGoogleHandler({
         !url.searchParams.get("code") ||
         url.searchParams.has("error")
       )
-        return redirect(cfg.origin + "/?auth=failed");
+        return fail(url.searchParams.has("error") ? "consent" : "state");
+      let stage = "token";
       try {
         const oauth = client();
         const { tokens } = await oauth.getToken({
@@ -202,6 +205,7 @@ export function createGoogleHandler({
           codeVerifier: flow.verifier,
           redirect_uri: cfg.redirect,
         });
+        stage = "identity";
         const ticket = await oauth.verifyIdToken({
           idToken: tokens.id_token,
           audience: cfg.clientId,
@@ -209,15 +213,16 @@ export function createGoogleHandler({
         const identity = ticket.getPayload();
         if (
           identity?.email_verified !== true ||
-          identity.email?.toLowerCase() !== cfg.email ||
-          !match(identity.nonce, flow.nonce) ||
-          !tokens.access_token ||
-          !tokens.scope?.split(" ").includes(scopes[2])
+          identity.email?.toLowerCase() !== cfg.email
         )
-          throw Error("Not permitted");
+          return fail("account");
+        if (!match(identity.nonce, flow.nonce)) return fail("identity");
+        if (!tokens.access_token) return fail("token");
+        if (!tokens.scope?.split(" ").includes(scopes[2])) return fail("scope");
         const expires =
           Math.min(tokens.expiry_date ?? 0, Date.now() + 3600000) - 30000;
-        if (expires <= Date.now()) throw Error("Expired");
+        if (expires <= Date.now()) return fail("expired");
+        stage = "session";
         res.setHeader("Set-Cookie", [
           setCookie(FLOW, "", 0, cfg),
           setCookie(
@@ -232,8 +237,13 @@ export function createGoogleHandler({
           ),
         ]);
         return redirect(cfg.origin + "/?auth=connected");
-      } catch {
-        return redirect(cfg.origin + "/?auth=failed");
+      } catch (error) {
+        const providerError = error.response?.data?.error;
+        if (stage === "token" && providerError === "invalid_client")
+          return fail("credentials");
+        if (stage === "token" && providerError === "invalid_grant")
+          return fail("code");
+        return fail(stage);
       }
     }
     if (action === "logout") {
