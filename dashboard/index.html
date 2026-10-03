@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>나의 하루 · 예시 대시보드</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script type="module" src="app.js"></script>
+  </head>
+  <body>
+    <a class="skip" href="#schedule">일정으로 바로 가기</a>
+    <main class="workspace">
+      <header class="page-header">
+        <div class="brand">
+          <h1>나의 하루</h1>
+          <span id="header-date"></span><span class="badge">예시 데이터</span>
+        </div>
+        <button id="mail-open" class="mail-summary">
+          미회신 메일 · 초안 보기
+        </button>
+      </header>
+      <div class="connection-bar" aria-label="Google 캘린더 연결">
+        <span id="google-status" role="status"
+          >예시 모드 · Google 연결 확인 중</span
+        >
+        <div class="inline">
+          <button id="google-connect" class="subtle" disabled>
+            Google 연결
+          </button>
+          <button id="google-calendar" class="subtle" hidden>
+            기본 캘린더 보기
+          </button>
+          <button id="google-example" class="subtle" hidden>
+            예시 일정 보기
+          </button>
+          <button id="google-disconnect" class="subtle" hidden>
+            연결 해제
+          </button>
+        </div>
+      </div>
+      <div class="dashboard-grid">
+        <!-- 일정 영역: modules/schedule.js -->
+        <section
+          id="schedule"
+          class="panel schedule-panel"
+          tabindex="-1"
+          aria-labelledby="schedule-title"
+        >
+          <div id="week" class="week-strip" aria-label="주간 날짜 선택"></div>
+          <div class="section-head">
+            <div>
+              <p id="selected-date" class="eyebrow"></p>
+              <h2 id="schedule-title">오늘의 일정</h2>
+            </div>
+            <button id="add-event" class="primary">+ 일정 추가</button>
+          </div>
+          <div id="agenda" class="agenda"></div>
+        </section>
+        <!-- TO DO 영역: modules/todos.js -->
+        <section
+          id="todos"
+          class="panel todo-panel"
+          aria-labelledby="todo-title"
+        >
+          <div class="section-head">
+            <h2 id="todo-title">오늘 할 일</h2>
+            <button id="add-todo" class="primary">+ 할 일 추가</button>
+          </div>
+          <div id="todo-list"></div>
+        </section>
+        <section
+          id="calendar"
+          class="panel calendar-panel"
+          aria-labelledby="month-title"
+        >
+          <div class="section-head">
+            <h2 id="month-title"></h2>
+            <div class="inline">
+              <button id="month-prev" class="icon" aria-label="이전 달">
+                ‹</button
+              ><button id="month-next" class="icon" aria-label="다음 달">
+                ›
+              </button>
+            </div>
+          </div>
+          <div class="weekdays" aria-hidden="true">
+            <span>일</span><span>월</span><span>화</span><span>수</span
+            ><span>목</span><span>금</span><span>토</span>
+          </div>
+          <div id="month-days" class="month-days"></div>
+          <button id="today" class="subtle full">오늘로 돌아가기</button>
+        </section>
+        <section
+          id="timer"
+          class="panel timer-panel"
+          aria-labelledby="timer-title"
+        >
+          <div class="section-head">
+            <h2 id="timer-title">집중 타이머</h2>
+            <span id="timer-mode" class="badge">집중</span>
+          </div>
+          <div class="timer-inputs">
+            <label
+              >집중 (분)<input
+                id="focus-min"
+                type="number"
+                min="0.1"
+                max="240"
+                step="0.1"
+                placeholder="시간 설정"
+                inputmode="decimal" /></label
+            ><label
+              >휴식 (분)<input
+                id="break-min"
+                type="number"
+                min="0.1"
+                max="240"
+                step="0.1"
+                placeholder="시간 설정"
+                inputmode="decimal"
+            /></label>
+          </div>
+          <output id="timer-display" class="timer-display">00:00</output>
+          <div class="timer-actions">
+            <button id="timer-start" class="primary">시작</button
+            ><button id="timer-pause" class="subtle" disabled>일시정지</button
+            ><button id="timer-reset" class="subtle">초기화</button>
+          </div>
+          <p id="timer-message" class="helper" role="status">
+            집중·휴식 시간을 직접 설정하세요.
+          </p>
+        </section>
+        <!-- 포스트잇 영역: modules/notes.js -->
+        <section
+          id="notes"
+          class="panel notes-panel"
+          aria-labelledby="notes-title"
+        >
+          <div class="section-head">
+            <div>
+              <h2 id="notes-title">생각 보드</h2>
+              <p class="helper">
+                메모의 이동 손잡이를 드래그하세요. 방향키로도 이동할 수 있어요.
+              </p>
+            </div>
+            <button id="add-note" class="subtle">+ 메모</button>
+          </div>
+          <div id="note-board" class="note-board"></div>
+        </section>
+      </div>
+      <footer>
+        <span
+          >예시 데이터로 구성과 동작을 확인하는 시제품입니다. Google 계정
+          연결·메일 발송 없음.</span
+        ><a href="?state=empty">빈 상태 미리보기</a>
+      </footer>
+    </main>
+    <dialog id="editor" aria-labelledby="editor-title">
+      <form id="editor-form">
+        <div class="section-head">
+          <h2 id="editor-title">편집</h2>
+          <button type="button" class="icon" data-close aria-label="편집 닫기">
+            ×
+          </button>
+        </div>
+        <div id="editor-fields"></div>
+        <p id="editor-error" class="error" role="alert"></p>
+        <div class="dialog-actions">
+          <button type="button" class="subtle" data-close>취소</button
+          ><button class="primary" type="submit">저장</button>
+        </div>
+      </form>
+    </dialog>
+    <!-- 메일 영역: modules/mail.js -->
+    <dialog id="mail-dialog" aria-labelledby="mail-title">
+      <div class="section-head">
+        <h2 id="mail-title">미회신 메일 <span class="badge">예시</span></h2>
+        <button class="icon" data-close aria-label="메일 닫기">×</button>
+      </div>
+      <div class="mail-layout">
+        <nav id="mail-list" aria-label="예시 메일 목록"></nav>
+        <div id="mail-detail"></div>
+      </div>
+      <p class="helper">
+        예시 초안입니다. 실제 Gmail 저장이나 발송은 하지 않습니다.
+      </p>
+    </dialog>
+    <dialog id="delete-dialog" aria-labelledby="delete-title">
+      <h2 id="delete-title">삭제할까요?</h2>
+      <p>이 브라우저에 저장된 항목이 삭제됩니다.</p>
+      <div class="dialog-actions">
+        <button class="subtle" data-close>취소</button
+        ><button id="delete-confirm" class="danger">삭제</button>
+      </div>
+    </dialog>
+    <div
+      id="status"
+      class="toast"
+      role="status"
+      aria-live="polite"
+      hidden
+    ></div>
+  </body>
+</html>

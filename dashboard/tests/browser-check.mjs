@@ -1,0 +1,22 @@
+import {createRequire} from 'node:module';
+import {mkdir,writeFile} from 'node:fs/promises';
+const require=createRequire('C:/Users/user/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/package.json');
+const {chromium}=require('playwright');
+const browser=await chromium.launch({channel:'msedge',headless:true});
+const context=await browser.newContext({viewport:{width:1440,height:1000},permissions:['clipboard-read','clipboard-write']});
+const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+await mkdir('../../review/review-assets',{recursive:true});
+await page.goto('http://localhost:4173');await page.waitForSelector('.event');
+const checks=[];
+for(const width of [1440,1280,1024,768,390]){await page.setViewportSize({width,height:1000});await page.screenshot({path:`../../review/review-assets/dashboard-${width}.png`,fullPage:true});checks.push({width,overflow:await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),calendarCells:await page.locator('#month-days button').count()});}
+await page.setViewportSize({width:1440,height:1000});
+await page.getByRole('button',{name:'+ 할 일 추가',exact:true}).click();await page.getByLabel('할 일',{exact:true}).fill('검수용 할 일');await page.getByRole('button',{name:'저장',exact:true}).click();await page.locator('#todo-list').getByText('검수용 할 일',{exact:true}).waitFor();
+await page.locator('.todo-row').filter({hasText:'검수용 할 일'}).getByRole('checkbox').check();
+await page.getByRole('button',{name:'+ 일정 추가',exact:true}).click();await page.getByLabel('제목',{exact:true}).fill('검수 일정');await page.getByLabel('시작 시간').fill('13:00');await page.getByLabel('종료 시간').fill('14:00');await page.getByRole('button',{name:'저장',exact:true}).click();await page.getByText('검수 일정',{exact:true}).waitFor();
+await page.getByRole('button',{name:'+ 메모',exact:true}).click();await page.getByLabel('메모 내용').fill('검수 메모');await page.getByRole('button',{name:'저장',exact:true}).click();
+await page.locator('#mail-open').click();await page.getByLabel('답장 초안 (예시 · 수정 가능)').fill('검수 초안');await page.getByRole('button',{name:'초안 복사'}).click();checks.push({clipboard:await page.evaluate(()=>navigator.clipboard.readText())});await page.keyboard.press('Escape');checks.push({mailClosed:await page.locator('#mail-dialog').evaluate(e=>!e.open),focusRestored:await page.locator('#mail-open').evaluate(e=>e===document.activeElement)});
+await page.reload();await page.getByText('검수 일정',{exact:true}).waitFor();checks.push({todoSaved:await page.locator('.todo-row').filter({hasText:'검수용 할 일'}).getByRole('checkbox').isChecked(),noteSaved:await page.getByText('검수 메모',{exact:true}).count()});await page.locator('#mail-open').click();checks.push({draftSaved:await page.locator('#mail-draft').inputValue()});await page.keyboard.press('Escape');
+await page.locator('#focus-min').fill('0.1');await page.locator('#break-min').fill('0.1');await page.locator('#timer-start').click();await page.waitForFunction(()=>document.querySelector('#timer-message').textContent.includes('끝났어요'),{},{timeout:15000});checks.push({timerEnd:await page.locator('#timer-message').textContent(),nextNotRunning:await page.locator('#timer-start').isEnabled()});
+const grip=page.locator('[data-grip]').first();const note=page.locator('.note').first();const before=await note.boundingBox();await grip.focus();await page.keyboard.press('ArrowRight');const after=await note.boundingBox();checks.push({noteKeyboardMoved:after.x>before.x});
+await page.goto('http://localhost:4173/?state=empty');for(const width of [1440,390]){await page.setViewportSize({width,height:1000});await page.screenshot({path:`../../review/review-assets/empty-${width}.png`,fullPage:true});checks.push({emptyWidth:width,overflow:await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),emptyMessages:await page.locator('.empty').count()});}await page.locator('#mail-open').click();checks.push({emptyMail:await page.getByText('미회신 예시 메일이 없어요.').count()});
+const result={checks,errors};console.log(JSON.stringify(result,null,2));await writeFile('../../review/review-assets/browser-results.json',JSON.stringify(result,null,2));await browser.close();if(errors.length||checks.some(c=>c.overflow))process.exitCode=1;
