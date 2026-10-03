@@ -1,0 +1,7 @@
+.git/
+.env*
+.vercel/
+dashboard/.env*
+dashboard/.vercel/
+dashboard/node_modules/
+dashboard/dist/
